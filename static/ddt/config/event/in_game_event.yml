@@ -1,0 +1,58 @@
+analyze:
+  position: # left, up, right, bottom
+    - 974
+    - 5
+    - 993
+    - 21
+  method: static_compare
+  method_param:
+    compare_image_fp: "image/in_game.png"
+
+observation:
+  my_turn:
+    position: # left, up, right, bottom
+      - 477
+      - 158
+      - 523
+      - 174
+
+    method: static_compare
+    status:
+      - yes
+    method_param:
+      compare_image_fp:
+        - "image/in_game_my_turn.png"
+
+  host:
+    position: # left, up, right, bottom
+      - 466
+      - 233
+      - 544
+      - 249
+    method: static_compare
+    status:
+      - yes
+    method_param:
+      compare_image_fp:
+        - "image/in_game_hosting.png"
+
+  wind:
+    position:
+      - 461
+      - 17
+      - 537
+      - 48
+    method: onnx
+    method_param:
+      preprocess: CTC
+      postprocess: CTC
+      onnx_model: "model/wind_1_rec_en_number_lite/new_wind_1_rec_en_number_lite.onnx"
+      character_dict: "model/wind_1_rec_en_number_lite/wind_dict.txt"
+
+
+action:
+  cancel_host:
+    method: left_click
+    param:
+      - 500
+      - 240

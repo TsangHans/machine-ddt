@@ -1,0 +1,40 @@
+analyze:
+  position:  # left, up, right, bottom
+    - 776
+    - 12
+    - 822
+    - 36
+  method: static_compare
+  method_param:
+    compare_image_fp: "image/in_room.png"
+
+observation:
+  ready:
+    position:  # left, up, right, bottom
+      - 929
+      - 514
+      - 983
+      - 529
+    method: static_compare
+    status:
+      - no
+      - yes
+    method_param:
+      compare_image_fp:
+        - "image/in_room_ready.png"
+        - "image/in_room_start.png"
+
+action:
+  start_game:
+    method: left_click
+    param:
+      - 940
+      - 470
+
+  start_game_delay:
+    method: left_click_delay
+    delay: 5
+    priority: 1
+    param:
+      - 940
+      - 470

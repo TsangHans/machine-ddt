@@ -1,0 +1,24 @@
+[tool.poetry]
+name = "machine-ddt"
+version = "0.1.0"
+description = ""
+authors = ["TsangHans <gzzenghan@189.cn>"]
+license = "MIT"
+readme = "README.md"
+include = ["mini_six/plugins/ddt_utils.py"]
+
+[[tool.poetry.source]]
+name = "tsinghua"
+url = "https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple/"
+default = true
+
+[tool.poetry.dependencies]
+mini-six = "0.1.3"
+pywin32 = "304"
+onnxruntime = "1.13.1"
+PyYAML="6.0"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
