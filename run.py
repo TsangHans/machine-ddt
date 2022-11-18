@@ -1,4 +1,4 @@
-from mini_six.thirdparty.ddt import DDTAgent, Event, DDTData
+from machine_ddt import DDTAgent, Event, DDTData
 
 ddt = DDTAgent()
 ddt.init()
