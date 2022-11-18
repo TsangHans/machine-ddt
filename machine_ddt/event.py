@@ -98,8 +98,11 @@ class _DDTEvent:
                     similarity = self.static_compare(cut_image, compare_image)
                     status_value_list.append((similarity, status))
 
-                status = sorted(status_value_list, key=lambda i: i[0])[1][1]
-                obs[observation] = status
+                prob, status = sorted(status_value_list, key=lambda i: i[0])[-1]
+                if prob >= config.get("threshold"):
+                    obs[observation] = status
+                else:
+                    obs[observation] = None
 
             elif analyze_method == "onnx":
                 import dl_script

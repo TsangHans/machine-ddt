@@ -25,16 +25,18 @@ observation:
 
   host:
     position: # left, up, right, bottom
-      - 466
-      - 233
-      - 544
-      - 249
+      - 47
+      - 439
+      - 83
+      - 455
     method: static_compare
     status:
       - yes
+      - no
     method_param:
       compare_image_fp:
         - "image/in_game_hosting.png"
+        - "image/in_game_not_hosting.png"
 
   wind:
     position:
@@ -46,8 +48,29 @@ observation:
     method_param:
       preprocess: CTC
       postprocess: CTC
-      onnx_model: "model/wind_1_rec_en_number_lite/new_wind_1_rec_en_number_lite.onnx"
+      onnx_model: "model/wind_1_rec_en_number_lite/wind_1_rec_en_number_lite.onnx"
       character_dict: "model/wind_1_rec_en_number_lite/wind_dict.txt"
+
+  angle:
+    position:
+      - 29
+      - 555
+      - 73
+      - 576
+    method: onnx
+    method_param:
+      preprocess: CTC
+      postprocess: CTC
+      onnx_model: "model/angle_1_rec_en_number_lite/angle_1_rec_en_number_lite.onnx"
+      character_dict: "model/angle_1_rec_en_number_lite/angle_dict.txt"
+#
+#  direction:
+#    position:
+#      - 3
+#      - 499
+#      - 101
+#      - 597
+
 
 
 action:
