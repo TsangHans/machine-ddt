@@ -24,6 +24,21 @@ observation:
         - "image/in_room_ready.png"
         - "image/in_room_start.png"
 
+  bag_available:
+    position:
+      - 688
+      - 550
+      - 719
+      - 579
+    method: static_compare
+    status:
+      - yes
+      - no
+    method_param:
+      compare_image_fp:
+        - "image/in_room_bag_available.png"
+        - "image/in_room_bag_not_available.png"
+
 action:
   start_game:
     method: left_click
@@ -31,10 +46,8 @@ action:
       - 940
       - 470
 
-  start_game_delay:
-    method: left_click_delay
-    delay: 5
-    priority: 1
+  open_bag:
+    method: left_click
     param:
-      - 940
-      - 470
+      - 703
+      - 564
