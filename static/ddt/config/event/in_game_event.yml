@@ -46,8 +46,7 @@ observation:
       - 48
     method: onnx_rec
     method_param:
-      preprocess: CTC
-      postprocess: CTC
+      algorithm: CTC
       onnx_model: "model/wind_1_rec_en_number_lite/wind_1_rec_en_number_lite.onnx"
       character_dict: "model/wind_1_rec_en_number_lite/wind_dict.txt"
 
@@ -74,8 +73,7 @@ observation:
       - 576
     method: onnx_rec
     method_param:
-      preprocess: CTC
-      postprocess: CTC
+      algorithm: CTC
       onnx_model: "model/angle_1_rec_en_number_lite/angle_1_rec_en_number_lite.onnx"
       character_dict: "model/angle_1_rec_en_number_lite/angle_dict.txt"
 

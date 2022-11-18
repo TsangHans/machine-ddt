@@ -1,12 +1,16 @@
 from dataclasses import dataclass
-from typing import Dict, Callable, Iterable, Sized
+from typing import Dict, Callable, Sized
 
 import os
+import machine_ddt
 import mini_six.portable.win32.operation as operation
-import mini_six.portable.win32.windll
 
 from mini_six import Config, Image
 from machine_ddt import _scheduler, _scheduler_task_list
+from machine_ddt.builtin_observation import BuiltinObservation, InGameObservation, InRoomObservation, \
+    RoomToGameObservation
+from machine_ddt.builtin_action import BuiltinAction, InGameAction, InRoomAction, RoomToGameAction
+from machine_ddt.observe_method import onnx_recognize
 from machine_ddt.key_map import KEY_MAP
 import numpy as np
 import cv2 as cv
@@ -18,23 +22,44 @@ try:
 except ImportError:
     from yaml import Loader, Dumper
 
-__all__ = ["InGame", "InRoom", "DDTData"]
+__all__ = ["InGame", "InRoom", "InRoomData", "InGameData", "RoomToGameData"]
+
+__module_path__ = machine_ddt.__file__.replace("\\__init__.py", "")
 
 config = Config()
 
 
 @dataclass
 class DDTData:
-    observation: Dict[str, str]
-    action: Dict[str, Callable]
+    custom_obs: Dict[str, str]
+    custom_act: Dict[str, Callable]
+
+
+@dataclass
+class InRoomData(DDTData):
+    builtin_obs: InRoomObservation
+    builtin_act: InRoomAction
+
+
+@dataclass
+class InGameData(DDTData):
+    builtin_obs: InGameObservation
+    builtin_act: InGameAction
+
+
+@dataclass
+class RoomToGameData(DDTData):
+    builtin_obs: RoomToGameObservation
+    builtin_act: RoomToGameAction
 
 
 class _DDTEvent:
-    def __init__(self, config_fp):
+    def __init__(self, config_fp=None):
         self.analyze_config = {}
         self.observation_config = {}
         self.action_config = {}
-        self.load_config(config_fp)
+        if config_fp is not None:
+            self.load_config(config_fp)
 
         # self._agent = DDTAgent()
 
@@ -51,30 +76,14 @@ class _DDTEvent:
         similarity = np.sum(origin_image == compare_image) / origin_image.size
         return similarity
 
-    def analyze(self, data: Image):
+    def analyze(self, image: np.ndarray):
         """根据截图分析得出属于该状态的概率"""
-        image, _handle = data.data, data.handle
-
-        if image.shape[2] == 4:
-            image = image[:, :, :3]
-
-        left, up, right, down = self.analyze_config["position"]
-        cut_image = image[up:down, left:right, :]
-
-        analyze_method = self.analyze_config["method"]
-        if analyze_method == "static_compare":
-            compare_image_fp = self.analyze_config["method_param"]["compare_image_fp"]
-            compare_image = cv.imread(os.path.join(config.get("static"), compare_image_fp))
-            similarity = self.static_compare(cut_image, compare_image)
-        else:
-            raise ValueError(f"Unexpected value analyze_method={analyze_method}.")
-
-        return similarity
-
-    def get_builtin_observation(self, image: np.ndarray) -> dict:
         raise NotImplementedError("Please reload this method.")
 
-    def get_builtin_action(self, _handle: int) -> dict:
+    def get_builtin_observation(self, image: np.ndarray) -> BuiltinObservation:
+        raise NotImplementedError("Please reload this method.")
+
+    def get_builtin_action(self, _handle: int) -> BuiltinAction:
         raise NotImplementedError("Please reload this method.")
 
     def get_custom_observation(self, image: np.ndarray):
@@ -111,23 +120,16 @@ class _DDTEvent:
                     obs[observation] = None
 
             elif analyze_method == "onnx_rec":  # 没有状态，识别的结果就是状态
-                import dl_script
 
                 method_param = observation_config["method_param"]
-                preprocess = method_param["preprocess"]
-                postprocess = method_param["postprocess"]
+                algorithm = method_param["algorithm"]
                 onnx_model_fp = os.path.join(config.get("static"), method_param["onnx_model"])
                 character_dict_fp = os.path.join(config.get("static"), method_param["character_dict"])
                 input_image_shape = (3, down - up, right - left)
 
-                session = dl_script.load_onnx(onnx_model_fp)
-                preprocess_func = dl_script.build_preprocess(algorithm=preprocess)
-                postprocess_func = dl_script.build_postprocess(character_dict_fp, algorithm=postprocess)
+                res = onnx_recognize(cut_image, onnx_model_fp, character_dict_fp, input_image_shape, algorithm)
 
-                norm_image = preprocess_func(cut_image, input_image_shape)
-                input_name = session.get_inputs()[0].name
-                output = session.run([], {input_name: norm_image})
-                obs[observation] = postprocess_func(output)[0][0]
+                obs[observation] = res
 
             elif analyze_method == "equal":
                 channel_dim = 3
@@ -227,21 +229,11 @@ class _DDTEvent:
         if image.shape[2] == 4:
             image = image[:, :, :3]
 
-        obs, act = {}, {}
-
-        builtin_obs = self.get_builtin_observation(image)
-        obs.update(builtin_obs)
-
         custom_obs = self.get_custom_observation(image)
-        obs.update(custom_obs)
-
-        builtin_act = self.get_builtin_action(_handle)
-        act.update(builtin_act)
 
         custom_act = self.get_custom_action(_handle)
-        act.update(custom_act)
 
-        data = DDTData(observation=obs, action=act)
+        data = DDTData(custom_obs=custom_obs, custom_act=custom_act)
 
         return data
 
@@ -254,28 +246,103 @@ class InEntry:
 class InRoom(_DDTEvent):
     """在房间"""
 
-    def get_builtin_observation(self, image: np.ndarray) -> dict:
-        raise {}
+    def analyze(self, image: np.ndarray):
+        if image.shape[2] == 4:
+            image = image[:, :, :3]
 
-    def get_builtin_action(self, _handle: int) -> dict:
-        raise {}
+        left, up, right, down = 776, 12, 822, 36
+        cut_image = image[up:down, left:right, :]
+
+        compare_image_fp = os.path.join(__module_path__, "static/image/in_room.png")
+        compare_image = cv.imread(compare_image_fp)
+        similarity = self.static_compare(cut_image, compare_image)
+        return similarity
+
+    def get_builtin_observation(self, image: np.ndarray) -> InRoomObservation:
+        return InRoomObservation(_image=image)
+
+    def get_builtin_action(self, _handle: int) -> InRoomAction:
+        return InRoomAction(_handle=_handle)
+
+    def pull(self, data: Image) -> InRoomData:
+        custom_data = super().pull(data)
+
+        image, _handle = data.data, data.handle
+
+        if image.shape[2] == 4:
+            image = image[:, :, :3]
+
+        builtin_observation = self.get_builtin_observation(image)
+        builtin_action = self.get_builtin_action(_handle)
+
+        res = InRoomData(builtin_obs=builtin_observation, builtin_act=builtin_action,
+                         custom_obs=custom_data.custom_obs,
+                         custom_act=custom_data.custom_act)
+        return res
 
 
 class InGame(_DDTEvent):
     """在游戏"""
 
-    def get_builtin_observation(self, image: np.ndarray) -> dict:
-        raise {}
+    def analyze(self, image: np.ndarray):
+        if image.shape[2] == 4:
+            image = image[:, :, :3]
 
-    def get_builtin_action(self, _handle: int) -> dict:
-        raise {}
+        left, up, right, down = 974, 5, 993, 21
+        cut_image = image[up:down, left:right, :]
+        compare_image_fp = os.path.join(__module_path__, "static/image/in_game.png")
+        compare_image = cv.imread(compare_image_fp)
+        similarity = self.static_compare(cut_image, compare_image)
+        return similarity
+
+    def get_builtin_observation(self, image: np.ndarray) -> InGameObservation:
+        obs = InGameObservation(_image=image)
+        return obs
+
+    def get_builtin_action(self, _handle: int) -> InGameAction:
+        act = InGameAction(_handle=_handle)
+        return act
+
+    def pull(self, data: Image) -> InGameData:
+        custom_data = super().pull(data)
+
+        image, _handle = data.data, data.handle
+
+        if image.shape[2] == 4:
+            image = image[:, :, :3]
+
+        builtin_observation = self.get_builtin_observation(image)
+        builtin_action = self.get_builtin_action(_handle)
+
+        res = InGameData(builtin_obs=builtin_observation, builtin_act=builtin_action, custom_obs=custom_data.custom_obs,
+                         custom_act=custom_data.custom_act)
+        return res
 
 
 class RoomToGame(_DDTEvent):
     """由房间进入游戏"""
 
-    def get_builtin_observation(self, image: np.ndarray) -> dict:
-        raise {}
+    def analyze(self, image: np.ndarray):
+        return 0
 
-    def get_builtin_action(self, _handle: int) -> dict:
-        raise {}
+    def get_builtin_observation(self, image: np.ndarray) -> RoomToGameObservation:
+        return RoomToGameObservation(_image=image)
+
+    def get_builtin_action(self, _handle: int) -> RoomToGameAction:
+        return RoomToGameAction(_handle=_handle)
+
+    def pull(self, data: Image) -> RoomToGameData:
+        custom_data = super().pull(data)
+
+        image, _handle = data.data, data.handle
+
+        if image.shape[2] == 4:
+            image = image[:, :, :3]
+
+        builtin_observation = self.get_builtin_observation(image)
+        builtin_action = self.get_builtin_action(_handle)
+
+        res = RoomToGameData(builtin_obs=builtin_observation, builtin_act=builtin_action,
+                             custom_obs=custom_data.custom_obs,
+                             custom_act=custom_data.custom_act)
+        return res

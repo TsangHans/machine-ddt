@@ -15,7 +15,6 @@ from . import logger
 from .abstract import SingleMeta
 from .handle import Handle, get_handle
 from .observer import PanoramicScreenShot
-from .shoot import shoot
 
 
 class Event(enum.Enum):
@@ -48,8 +47,8 @@ class DDTAgent(metaclass=SingleMeta):
     def __init__(self):
         self._action_dict = {}
         self._event_dict = {
-            Event.InGame: InGame(os.path.join(config.get("static"), "config/event/in_game_event.yml")),
-            Event.InRoom: InRoom(os.path.join(config.get("static"), "config/event/in_room_event.yml"))
+            Event.InGame: InGame(),
+            Event.InRoom: InRoom()
         }
         self._last_event = None
 
@@ -63,7 +62,7 @@ class DDTAgent(metaclass=SingleMeta):
             similarity_list = []
 
             for _event_type, _event in self._event_dict.items():
-                similarity = _event.analyze(data)
+                similarity = _event.analyze(data.data)
                 similarity_list.append((similarity, _event_type))
 
             similarity_list = sorted(similarity_list, key=lambda i: i[0])
@@ -106,4 +105,4 @@ class DDTAgent(metaclass=SingleMeta):
         six.run()
 
 
-from .event import _DDTEvent, InGame, InRoom, DDTData
+from .event import _DDTEvent, InGame, InRoom, InRoomData, InGameData, RoomToGameData
