@@ -7,3 +7,11 @@ def shoot(hwnd, strength):
     operation.press_key(hwnd, operation.VK_SPACE)
     time.sleep(during_time)
     operation.release_key(hwnd, operation.VK_SPACE)
+
+
+def turn_right(hwnd):
+    operation.click_key(hwnd, operation.VK_RIGHT)
+
+
+def turn_left(hwnd):
+    operation.click_key(hwnd, operation.VK_LEFT)

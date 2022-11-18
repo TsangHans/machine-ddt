@@ -57,7 +57,7 @@ observation:
       - 31
       - 467
       - 32
-    channel:  # 指定图像通道
+    channel: # 指定图像通道
       - 0
     method: equal
     status:
@@ -78,14 +78,6 @@ observation:
       postprocess: CTC
       onnx_model: "model/angle_1_rec_en_number_lite/angle_1_rec_en_number_lite.onnx"
       character_dict: "model/angle_1_rec_en_number_lite/angle_dict.txt"
-
-#  direction:
-#    position:
-#      - 3
-#      - 499
-#      - 101
-#      - 597
-
 
 
 action:

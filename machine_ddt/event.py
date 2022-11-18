@@ -3,9 +3,11 @@ from typing import Dict, Callable, Iterable, Sized
 
 import os
 import mini_six.portable.win32.operation as operation
+import mini_six.portable.win32.windll
 
 from mini_six import Config, Image
 from machine_ddt import _scheduler, _scheduler_task_list
+from machine_ddt.key_map import KEY_MAP
 import numpy as np
 import cv2 as cv
 
@@ -69,13 +71,13 @@ class _DDTEvent:
 
         return similarity
 
-    def pull(self, data: Image):
-        """拉取该状态下所有信息"""
-        image, _handle = data.data, data.handle
+    def get_builtin_observation(self, image: np.ndarray) -> dict:
+        raise NotImplementedError("Please reload this method.")
 
-        if image.shape[2] == 4:
-            image = image[:, :, :3]
+    def get_builtin_action(self, _handle: int) -> dict:
+        raise NotImplementedError("Please reload this method.")
 
+    def get_custom_observation(self, image: np.ndarray):
         obs = {}
 
         for observation, observation_config in self.observation_config.items():
@@ -162,6 +164,7 @@ class _DDTEvent:
             else:
                 raise ValueError(f"Unexpected value analyze_method={analyze_method}.")
 
+    def get_custom_action(self, _handle: int):
         act = {}
         for action, action_config in self.action_config.items():
             act[action] = {}
@@ -169,6 +172,36 @@ class _DDTEvent:
             if method == "left_click":
                 def func():
                     return operation.left_click(_handle, *action_config["param"])
+
+                act[action] = func
+
+            elif method == "click_key":
+                def func():
+                    for key in action_config["param"]:
+                        if key not in KEY_MAP:
+                            raise ValueError(f"Unexpected value key={key}.")
+
+                        operation.click_key(_handle, KEY_MAP[key])
+
+                act[action] = func
+
+            elif method == "press_key":
+                def func():
+                    for key in action_config["param"]:
+                        if key not in KEY_MAP:
+                            raise ValueError(f"Unexpected value key={key}.")
+
+                        operation.press_key(_handle, KEY_MAP[key])
+
+                act[action] = func
+
+            elif method == "release_key":
+                def func():
+                    for key in action_config["param"]:
+                        if key not in KEY_MAP:
+                            raise ValueError(f"Unexpected value key={key}.")
+
+                        operation.release_key(_handle, KEY_MAP[key])
 
                 act[action] = func
 
@@ -185,6 +218,28 @@ class _DDTEvent:
                                          argument=(_handle, *action_config["param"]))
 
                 act[action] = func
+        return act
+
+    def pull(self, data: Image):
+        """拉取该状态下所有信息"""
+        image, _handle = data.data, data.handle
+
+        if image.shape[2] == 4:
+            image = image[:, :, :3]
+
+        obs, act = {}, {}
+
+        builtin_obs = self.get_builtin_observation(image)
+        obs.update(builtin_obs)
+
+        custom_obs = self.get_custom_observation(image)
+        obs.update(custom_obs)
+
+        builtin_act = self.get_builtin_action(_handle)
+        act.update(builtin_act)
+
+        custom_act = self.get_custom_action(_handle)
+        act.update(custom_act)
 
         data = DDTData(observation=obs, action=act)
 
@@ -198,14 +253,29 @@ class InEntry:
 
 class InRoom(_DDTEvent):
     """在房间"""
-    pass
+
+    def get_builtin_observation(self, image: np.ndarray) -> dict:
+        raise {}
+
+    def get_builtin_action(self, _handle: int) -> dict:
+        raise {}
 
 
 class InGame(_DDTEvent):
     """在游戏"""
-    pass
+
+    def get_builtin_observation(self, image: np.ndarray) -> dict:
+        raise {}
+
+    def get_builtin_action(self, _handle: int) -> dict:
+        raise {}
 
 
 class RoomToGame(_DDTEvent):
     """由房间进入游戏"""
-    pass
+
+    def get_builtin_observation(self, image: np.ndarray) -> dict:
+        raise {}
+
+    def get_builtin_action(self, _handle: int) -> dict:
+        raise {}
