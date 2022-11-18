@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Dict, Callable
+from typing import Dict, Callable, Iterable, Sized
 
 import os
 import mini_six.portable.win32.operation as operation
@@ -15,8 +15,6 @@ try:
     from yaml import CLoader as Loader, CDumper as Dumper
 except ImportError:
     from yaml import Loader, Dumper
-
-
 
 __all__ = ["InGame", "InRoom", "DDTData"]
 
@@ -83,6 +81,12 @@ class _DDTEvent:
         for observation, observation_config in self.observation_config.items():
 
             left, up, right, down = observation_config["position"]
+
+            if "channel" in observation_config:
+                channel = observation_config["channel"]
+            else:
+                channel = None
+
             cut_image = image[up:down, left:right, :]
             analyze_method = observation_config["method"]
 
@@ -104,7 +108,7 @@ class _DDTEvent:
                 else:
                     obs[observation] = None
 
-            elif analyze_method == "onnx":
+            elif analyze_method == "onnx_rec":  # 没有状态，识别的结果就是状态
                 import dl_script
 
                 method_param = observation_config["method_param"]
@@ -122,6 +126,41 @@ class _DDTEvent:
                 input_name = session.get_inputs()[0].name
                 output = session.run([], {input_name: norm_image})
                 obs[observation] = postprocess_func(output)[0][0]
+
+            elif analyze_method == "equal":
+                channel_dim = 3
+                if channel is not None:
+                    channel_dim = len(channel)
+
+                method_param = observation_config["method_param"]
+                status_iter = observation_config["status"]
+                compare_value_iter = method_param["compare_value"]
+
+                status = None
+
+                for s, compare_value in zip(status_iter, compare_value_iter):
+                    if isinstance(compare_value, int):
+                        value_dim = 1
+                        compare_value = [compare_value]
+                    elif isinstance(compare_value, Sized):
+                        value_dim = len(compare_value)
+                    else:
+                        raise TypeError("Value type should be int or sized.")
+
+                    if channel_dim != value_dim:
+                        raise ValueError(f"Channel dim should be equal to value dim, now {channel_dim} != {value_dim}")
+
+                    res = True
+                    for c, v in zip(channel, compare_value):
+                        res = res and cut_image[:, :, c] == v
+
+                    if res:
+                        status = s
+
+                obs[observation] = status
+
+            else:
+                raise ValueError(f"Unexpected value analyze_method={analyze_method}.")
 
         act = {}
         for action, action_config in self.action_config.items():
@@ -170,6 +209,3 @@ class InGame(_DDTEvent):
 class RoomToGame(_DDTEvent):
     """由房间进入游戏"""
     pass
-
-
-
