@@ -4,9 +4,14 @@ ddt = DDTAgent()
 ddt.init()
 
 
-@ddt.subscribe(Event.InRoom)
-def prepare(data: InRoomData):
+@ddt.coro_subscribe(Event.InRoom)
+async def prepare_coro(data: InRoomData):
     pass
+
+
+# @ddt.subscribe(Event.InRoom)
+# def prepare(data: InRoomData):
+#     pass
 
 
 @ddt.subscribe(Event.InGame)

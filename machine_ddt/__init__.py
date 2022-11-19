@@ -1,3 +1,6 @@
+import asyncio
+import heapq
+
 import mini_six as six
 from mini_six import look, DataSource, SubscribeMode, Config, Image
 
@@ -6,7 +9,6 @@ config.add({"threshold": 0.6, "static": "static/ddt"})
 
 import time
 import enum
-import os
 import logging
 import sched
 import threading
@@ -46,11 +48,14 @@ _scheduler_task_list = []
 class DDTAgent(metaclass=SingleMeta):
     def __init__(self):
         self._action_dict = {}
+        self._coro_action_waiting_dict = {}
+        self._coro_action_running_dict = {}
         self._event_dict = {
             Event.InGame: InGame(),
             Event.InRoom: InRoom()
         }
         self._last_event = None
+        self._loop = asyncio.get_event_loop()
 
     def init(self):
         six.init()
@@ -92,11 +97,42 @@ class DDTAgent(metaclass=SingleMeta):
 
         return _decorator
 
+    def coro_subscribe(self, _event: Event, priority: int = 1):
+
+        def _decorator(func):
+            async def coro(data):
+                await func(data)
+
+            if _event in self._coro_action_waiting_dict:
+                heapq.heappush(self._coro_action_waiting_dict[_event], (priority, coro))
+            else:
+                self._coro_action_waiting_dict[_event] = []
+                heapq.heappush(self._coro_action_waiting_dict[_event], (priority, coro))
+            ddt_logger.info(f"@start-up Coroutine action [{func.__name__}] has subscribed successfully.")
+            return func
+
+        return _decorator
+
     def notify(self, _event: Event, data):
-        for action in self._action_dict[_event]:
-            action(data)
-            ddt_logger.info(
-                f"@act-done Action [{action.__name__}] react to event [{_event}] successfully.")
+        if _event in self._action_dict:
+            for action in self._action_dict[_event]:
+                action(data)
+                ddt_logger.info(
+                    f"@act-done Action [{action.__name__}] react to event [{_event}] successfully.")
+
+        if _event in self._coro_action_waiting_dict:
+            while self._coro_action_waiting_dict[_event]:
+                task = heapq.heappop(self._coro_action_waiting_dict[_event])
+
+                if _event not in self._coro_action_running_dict:
+                    self._coro_action_running_dict[_event] = []
+                heapq.heappush(self._coro_action_running_dict[_event], task)
+
+        if _event in self._coro_action_running_dict:
+            while self._coro_action_running_dict[_event]:
+                priority, coro = heapq.heappop(self._coro_action_running_dict[_event])
+                asyncio.run_coroutine_threadsafe(coro(data), self._loop)
+                heapq.heappush(self._coro_action_waiting_dict[_event], (priority, coro))
 
     def run(self):
         t = threading.Thread(name="ddt_scheduler", target=_scheduler.run, daemon=True)
