@@ -41,6 +41,33 @@ class RoomToGameObservation(BuiltinObservation):
     pass
 
 
+@dataclass
+class InChallengeRoomObservation(BuiltinObservation):
+    pass
+
+
+@dataclass
+class InChallengeRoomObservation(BuiltinObservation):
+    pass
+
+
+@dataclass
+class ChallengeRoomSettingObservation(BuiltinObservation):
+    map_pos: dict
+    map_scroll_bar_pos: tuple
+    map_scroll_bar_in_top: bool
+    map_scroll_bar_in_bottom: bool
+
+
+@dataclass
+class InEntryObservation(BuiltinObservation):
+    pass
+
+@dataclass
+class InArenaHallObservation(BuiltinObservation):
+    pass
+
+
 def get_wind(image: np.ndarray):
     wind_rec_model_fp = os.path.join(__module_path__,
                                      "static/model/wind_1_rec_en_number_lite/wind_1_rec_en_number_lite.onnx")

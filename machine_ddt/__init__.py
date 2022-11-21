@@ -23,6 +23,9 @@ class Event(enum.Enum):
     InGame = 0
     InRoom = 1
     RoomToGame = 2
+    InChallengeRoom = 3
+    InEntry = 4
+    InArenaHall = 5
 
 
 six_logger = logging.getLogger("six")
@@ -51,8 +54,11 @@ class DDTAgent(metaclass=SingleMeta):
         self._coro_action_waiting_dict = {}
         self._coro_action_running_dict = {}
         self._event_dict = {
+            Event.InEntry: InEntry(),
             Event.InGame: InGame(),
-            Event.InRoom: InRoom()
+            Event.InRoom: InRoom(),
+            Event.InChallengeRoom: InChallengeRoom(),
+            Event.InArenaHall: InArenaHall(),
         }
         self._last_event = None
         self._loop = asyncio.get_event_loop()
@@ -62,7 +68,7 @@ class DDTAgent(metaclass=SingleMeta):
 
         handles = get_handle(Handle.HD_TG)
 
-        @look(DataSource.SCREENSHOT, handles, period=1, priority=1, subscribe_mode=SubscribeMode.PULL)
+        @look(DataSource.SCREENSHOT, handles, period=20, priority=1, subscribe_mode=SubscribeMode.PULL)
         def ddt_publisher(data: Image):
             similarity_list = []
 
@@ -78,7 +84,7 @@ class DDTAgent(metaclass=SingleMeta):
                 data = self._event_dict[_event].pull(data)
                 self.notify(_event, data)
 
-                if self._last_event == Event.InRoom and _event == Event.InGame:
+                if self._last_event in (Event.InRoom, Event.InChallengeRoom) and _event == Event.InGame:
                     self.notify(Event.RoomToGame, data)
                 self._last_event = _event
 
@@ -102,6 +108,7 @@ class DDTAgent(metaclass=SingleMeta):
         def _decorator(func):
             async def coro(data):
                 await func(data)
+                heapq.heappush(self._coro_action_waiting_dict[_event], (priority, coro))
 
             if _event in self._coro_action_waiting_dict:
                 heapq.heappush(self._coro_action_waiting_dict[_event], (priority, coro))
@@ -132,7 +139,6 @@ class DDTAgent(metaclass=SingleMeta):
             while self._coro_action_running_dict[_event]:
                 priority, coro = heapq.heappop(self._coro_action_running_dict[_event])
                 asyncio.run_coroutine_threadsafe(coro(data), self._loop)
-                heapq.heappush(self._coro_action_waiting_dict[_event], (priority, coro))
 
     def run(self):
         t = threading.Thread(name="ddt_scheduler", target=_scheduler.run, daemon=True)
@@ -141,4 +147,5 @@ class DDTAgent(metaclass=SingleMeta):
         six.run()
 
 
-from .event import _DDTEvent, InGame, InRoom, InRoomData, InGameData, RoomToGameData
+from .event import _DDTEvent, InGame, InRoom, InChallengeRoom, InRoomData, InGameData, RoomToGameData, \
+    InChallengeRoomData, InEntry, InArenaHall
