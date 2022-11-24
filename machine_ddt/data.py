@@ -1,11 +1,10 @@
 from dataclasses import dataclass
 from typing import Dict, Callable
 
-from machine_ddt.builtin_action import BuiltinAction, InRoomAction, InGameAction, RoomToGameAction, \
-    InChallengeRoomAction, ChallengeRoomSettingAction, InEntryAction, InArenaHallAction
+from machine_ddt.builtin_action import BuiltinAction, InRoomAction, InGameAction, \
+    InChallengeRoomAction, InEntryAction, InArenaHallAction
 from machine_ddt.builtin_observation import BuiltinObservation, InRoomObservation, InGameObservation, \
-    RoomToGameObservation, InChallengeRoomObservation, ChallengeRoomSettingObservation, InEntryObservation, \
-    InArenaHallObservation
+    InChallengeRoomObservation, InEntryObservation, InArenaHallObservation
 
 
 @dataclass
@@ -30,20 +29,14 @@ class InGameData(DDTData):
 
 @dataclass
 class RoomToGameData(DDTData):
-    builtin_obs: RoomToGameObservation
-    builtin_act: RoomToGameAction
+    builtin_obs: InGameObservation
+    builtin_act: InGameAction
 
 
 @dataclass
 class InChallengeRoomData(DDTData):
     builtin_obs: InChallengeRoomObservation
     builtin_act: InChallengeRoomAction
-
-
-@dataclass
-class ChallengeRoomSettingData(DDTData):
-    builtin_obs: ChallengeRoomSettingObservation
-    builtin_act: ChallengeRoomSettingAction
 
 
 @dataclass

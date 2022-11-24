@@ -13,7 +13,7 @@ url = "https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple/"
 default = true
 
 [tool.poetry.dependencies]
-mini-six = "0.1.5"
+mini-six = "0.1.8"
 pywin32 = "305"
 onnxruntime = "1.13.1"
 PyYAML="6.0"

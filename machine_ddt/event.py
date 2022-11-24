@@ -1,19 +1,17 @@
-from dataclasses import dataclass
-from typing import Dict, Callable, Sized
+from typing import Sized, Dict
 
 import os
 import machine_ddt
 import mini_six.portable.win32.operation as operation
 
-from mini_six import Config, Image
-from machine_ddt import _scheduler, _scheduler_task_list
+from mini_six import Config, SubscribeData
+from machine_ddt.context import DDTContextResource
 from machine_ddt.data import DDTData, InRoomData, InGameData, RoomToGameData, InChallengeRoomData, \
-    ChallengeRoomSettingData, InEntryData, InArenaHallData
+    InEntryData, InArenaHallData
 from machine_ddt.builtin_observation import BuiltinObservation, InGameObservation, InRoomObservation, \
-    RoomToGameObservation, InChallengeRoomObservation, ChallengeRoomSettingObservation, InEntryObservation, \
-    InArenaHallObservation
-from machine_ddt.builtin_action import BuiltinAction, InGameAction, InRoomAction, RoomToGameAction, \
-    InChallengeRoomAction, ChallengeRoomSettingAction, InEntryAction, InArenaHallAction
+    InEntryObservation, InArenaHallObservation, InChallengeRoomObservation
+from machine_ddt.builtin_action import BuiltinAction, InGameAction, InRoomAction, \
+    InChallengeRoomAction, InEntryAction, InArenaHallAction
 from machine_ddt.observe_method import onnx_recognize
 from machine_ddt.key_map import KEY_MAP
 import numpy as np
@@ -38,14 +36,14 @@ class _DDTEvent:
     action_type: BuiltinAction = None
     data_type: DDTData = None
 
-    def __init__(self, config_fp=None):
+    def __init__(self, ctx: Dict[int, DDTContextResource], config_fp=None):
         self.analyze_config = {}
         self.observation_config = {}
         self.action_config = {}
         if config_fp is not None:
             self.load_config(config_fp)
 
-        # self._agent = DDTAgent()
+        self._ctx = ctx
 
     def load_config(self, config_fp):
         """加载配置文件"""
@@ -205,11 +203,11 @@ class _DDTEvent:
         return obs
 
     def get_builtin_action(self, _handle: int) -> action_type:
-        act = self.action_type(_handle=_handle)
+        act = self.action_type(_handle=_handle, _ctx=self._ctx.get(_handle))
         return act
 
-    def pull(self, data: Image) -> data_type:
-        image, _handle = data.data, data.handle
+    def pull(self, data: SubscribeData) -> data_type:
+        image, _handle = data.image, data.handle
         custom_obs = self.get_custom_observation(image)
 
         custom_act = self.get_custom_action(_handle)
@@ -282,15 +280,6 @@ class InChallengeRoom(_DDTEvent):
         return similarity
 
 
-class ChallengeRoomSetting(_DDTEvent):
-    observation_type = ChallengeRoomSettingObservation
-    action_type = ChallengeRoomSettingAction
-    data_type = ChallengeRoomSettingData
-
-    def analyze(self, image: np.ndarray):
-        pass
-
-
 class InGame(_DDTEvent):
     """在游戏"""
 
@@ -312,9 +301,9 @@ class InGame(_DDTEvent):
 
 class RoomToGame(_DDTEvent):
     """由房间进入游戏"""
-    observation_type = RoomToGameObservation
-    action_type = RoomToGameAction
-    data_type = RoomToGameData
+    observation_type = InGameObservation
+    action_type = InGameAction
+    data_type = InGameData
 
     def analyze(self, image: np.ndarray):
         return 0

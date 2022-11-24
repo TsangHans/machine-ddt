@@ -8,6 +8,12 @@ import logging
 - shutdown：程序终止
 """
 
+
+six_logger = logging.getLogger("six")
+for handler in six_logger.handlers:
+    if not isinstance(handler, logging.FileHandler):
+        handler.setLevel(logging.ERROR)
+
 logger = logging.getLogger("ddt")
 logger.setLevel(logging.INFO)
 # create file handler which logs even debug messages
