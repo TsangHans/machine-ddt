@@ -1,4 +1,3 @@
-from .challenge_room_setting_action import ChallengeRoomSettingAction
 from .in_arena_hall import InArenaHallAction
 from .in_challenge_room import InChallengeRoomAction
 from .in_entry import InEntryAction
